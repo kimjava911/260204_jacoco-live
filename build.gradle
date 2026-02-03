@@ -1,0 +1,70 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.5.10'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'jacoco' // Jacoco 플러그인 추가
+}
+
+group = 'kr.java'
+version = '0.0.1-SNAPSHOT'
+description = 'use-jacoco'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform {
+        // 시스템 속성 'coverageProfile' 값을 읽어옵니다. (예: -DcoverageProfile=20)
+        def profile = System.getProperty("coverageProfile")
+        
+        // 프로파일 값에 따라 실행할 테스트 태그를 설정합니다.
+        if (profile == "20") {
+            // 20% 프로파일: 'base' 태그가 붙은 테스트만 실행
+            includeTags "base"
+        } else if (profile == "55") {
+            // 55% 프로파일: 'base'와 'medium-add' 태그가 붙은 테스트 실행
+            includeTags "base", "medium-add"
+        } else if (profile == "80") {
+            // 80% 프로파일: 'base', 'medium-add', 'high-add' 태그가 붙은 테스트 실행
+            includeTags "base", "medium-add", "high-add"
+        }
+    }
+    // 테스트가 끝난 후 항상 리포트를 생성하도록 설정
+    finalizedBy jacocoTestReport
+}
+
+jacocoTestReport {
+    dependsOn test // 리포트 생성 전 테스트가 먼저 실행되어야 함
+    reports {
+        // XML과 HTML 리포트 생성을 활성화
+        xml.required = true
+        html.required = true
+    }
+}
+
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            limit {
+                // 최소 커버리지 기준을 50% (0.50)로 설정
+                minimum = 0.50
+            }
+        }
+    }
+}
+
+// 'check' 태스크 실행 시 커버리지 검증도 함께 수행되도록 설정
+check.dependsOn jacocoTestCoverageVerification

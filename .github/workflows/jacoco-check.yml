@@ -1,0 +1,65 @@
+name: Jacoco Coverage Check
+
+on:
+  # 수동으로 워크플로우를 실행할 수 있도록 설정
+  workflow_dispatch:
+    inputs:
+      coverage_profile:
+        description: 'Coverage Profile (20, 55, 80)' # 실행 시 선택할 커버리지 프로파일 설명
+        required: true
+        default: '20' # 기본값 설정
+        type: choice
+        options:
+        - '20' # 낮은 커버리지 (실패 예상)
+        - '55' # 중간 커버리지 (통과 예상)
+        - '80' # 높은 커버리지 (통과 예상)
+
+permissions:
+  contents: read
+  packages: write # GHCR에 이미지를 푸시하기 위한 권한
+
+jobs:
+  build-and-check:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Test with Coverage Profile
+      # 입력받은 coverage_profile 값을 시스템 속성으로 전달하여 테스트 실행
+      run: ./gradlew test -DcoverageProfile=${{ inputs.coverage_profile }} jacocoTestReport
+
+    - name: Verify Coverage
+      # 커버리지 검증 실행 (50% 미만이면 여기서 실패)
+      run: ./gradlew jacocoTestCoverageVerification
+
+    - name: Build with Gradle
+      if: success() # 이전 단계(커버리지 검증)가 성공했을 때만 실행
+      # 테스트는 이미 수행했으므로 생략하고 빌드만 수행
+      run: ./gradlew build -x test
+
+    - name: Log in to the Container registry
+      if: success()
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build and push Docker image
+      if: success()
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        push: true
+        # ghcr.io/<owner>/<repo>:latest 태그로 푸시
+        tags: ghcr.io/${{ github.repository }}:latest
