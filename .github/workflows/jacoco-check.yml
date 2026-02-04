@@ -13,6 +13,7 @@ on:
         - '20' # 낮은 커버리지 (실패 예상)
         - '55' # 중간 커버리지 (통과 예상)
         - '80' # 높은 커버리지 (통과 예상)
+  pull_request:
 
 permissions:
   contents: read
