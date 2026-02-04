@@ -17,6 +17,8 @@ on:
 permissions:
   contents: read
   packages: write # GHCR에 이미지를 푸시하기 위한 권한
+  pull-requests: write # PR에 코멘트를 달기 위한 권한
+  checks: write # 테스트 결과를 리포트로 작성하기 위한 권한
 
 jobs:
   build-and-check:
@@ -38,6 +40,21 @@ jobs:
       # 입력받은 coverage_profile 값을 시스템 속성으로 전달하여 테스트 실행
       # 주의: 단위 테스트가 하나라도 실패하면 Gradle 빌드가 실패하고, 워크플로우가 여기서 즉시 중단됩니다.
       run: ./gradlew test -DcoverageProfile=${{ inputs.coverage_profile }} jacocoTestReport
+
+    - name: Publish Test Results
+      uses: EnricoMi/publish-unit-test-result-action@v2
+      if: always() # 테스트 실패 시에도 리포트를 발행하기 위해 always() 사용
+      with:
+        files: "build/test-results/**/*.xml"
+
+    - name: Add JaCoCo report to PR
+      uses: madrapps/jacoco-report@v1.6.1
+      if: always() # 테스트 실패 시에도 커버리지 리포트를 발행하기 위해 always() 사용
+      with:
+        paths: ${{ github.workspace }}/build/reports/jacoco/test/jacocoTestReport.xml
+        token: ${{ secrets.GITHUB_TOKEN }}
+        min-coverage-overall: 40 # 전체 커버리지가 40% 미만이면 실패 처리
+        min-coverage-changed-files: 60 # 변경된 파일 커버리지 기준
 
     - name: Verify Coverage
       # 커버리지 검증 실행 (50% 미만이면 여기서 실패하여 워크플로우 중단)
