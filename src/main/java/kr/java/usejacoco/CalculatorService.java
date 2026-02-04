@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class CalculatorService {
     // 변동사항을 만들기 위한 주석
+    // 변동사항을 만들기 위한 주석 #2
 
     // 20% 프로파일에 포함 (base 태그)
     public int add(int a, int b) {
